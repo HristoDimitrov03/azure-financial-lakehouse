@@ -31,12 +31,11 @@ yfinance (Python)
 | Asset | Link |
 |--------|------|
 | GitHub | https://github.com/HristoDimitrov03/azure-financial-lakehouse |
-| Pipeline walkthrough (ADF → Databricks → dashboard) | [Watch video](docs/demo/azure-pipeline-demo.mp4) |
 | Live Vercel dashboard (Gold metrics) | https://azure-financial-lakehouse.vercel.app |
 
-**Pipeline demo** (Azure Data Factory → Databricks Medallion → Northline Markets):
+**Pipeline walkthrough** — ADF → Databricks Medallion → Northline Markets dashboard:
 
-https://github.com/HristoDimitrov03/azure-financial-lakehouse/blob/master/docs/demo/azure-pipeline-demo.mp4
+https://github.com/user-attachments/assets/7b5db1b7-203f-497d-8e01-989684b592c6
 
 ---
 
