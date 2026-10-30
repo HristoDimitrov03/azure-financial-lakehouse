@@ -115,7 +115,11 @@ export function Dashboard({ data }: Props) {
       ? vsSpyLatest.ticker_indexed - vsSpyLatest.spy_indexed
       : null;
 
-  const lastSync = formatLastSyncEet(data.generated_at_utc);
+  const lastSync = formatLastSyncEet(
+    data.last_synced_at_utc ??
+      data.pipeline_synced_at_utc ??
+      data.generated_at_utc,
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6">
@@ -137,7 +141,7 @@ export function Dashboard({ data }: Props) {
           </p>
           <div
             className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-sm"
-            title="When market data was last refreshed for this dashboard"
+            title="When the Medallion pipeline (or extract) last finished — not when this page was built"
           >
             <span
               className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"

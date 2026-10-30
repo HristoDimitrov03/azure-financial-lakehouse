@@ -4,6 +4,13 @@ Build Gold-style metrics JSON/CSV for the Next.js dashboard (Sprint 5).
 Default source: latest local Sprint 1 extract under data/raw/market_daily/.
 Optional: --csv path to a Gold CSV exported from Databricks (notebook 05).
 
+Last sync on the dashboard uses (in order):
+  1. data/export/pipeline_sync.json (written by Databricks notebook 03/05)
+  2. --synced-at CLI override
+  3. max extracted_at_utc from the source CSV
+  4. sibling _manifest.json extracted_at_utc
+  5. generated_at_utc (JSON build time) as last resort
+
 Outputs (for Vercel static hosting):
   web/public/data/gold_metrics.json
   data/export/gold_metrics.csv
@@ -111,6 +118,70 @@ def _compute_gold_from_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
     return gold.reset_index(drop=True)
 
 
+def _normalize_utc(value: str) -> str | None:
+    text = (value or "").strip()
+    if not text:
+        return None
+    try:
+        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _resolve_pipeline_synced_at(
+    *,
+    src: Path,
+    raw_df: pd.DataFrame,
+    sync_json: Path | None,
+    synced_at_cli: str | None,
+) -> tuple[str | None, str]:
+    """Return (iso_utc or None, source_label)."""
+    if synced_at_cli:
+        normalized = _normalize_utc(synced_at_cli)
+        if normalized:
+            return normalized, "cli"
+
+    candidates = []
+    if sync_json is not None:
+        candidates.append(sync_json)
+    candidates.append(ROOT / "data" / "export" / "pipeline_sync.json")
+
+    for path in candidates:
+        if path is None or not path.is_file():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        stamp = payload.get("pipeline_synced_at_utc") or payload.get(
+            "gold_built_at_utc"
+        )
+        normalized = _normalize_utc(str(stamp)) if stamp else None
+        if normalized:
+            return normalized, f"pipeline_sync:{path.name}"
+
+    if "extracted_at_utc" in raw_df.columns:
+        series = pd.to_datetime(raw_df["extracted_at_utc"], utc=True, errors="coerce")
+        if series.notna().any():
+            stamp = series.max().strftime("%Y-%m-%dT%H:%M:%SZ")
+            return stamp, "csv:extracted_at_utc"
+
+    manifest = src.parent / "_manifest.json"
+    if manifest.is_file():
+        try:
+            payload = json.loads(manifest.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            payload = {}
+        normalized = _normalize_utc(str(payload.get("extracted_at_utc") or ""))
+        if normalized:
+            return normalized, "manifest:extracted_at_utc"
+
+    return None, "none"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build Gold export for Next.js / Vercel")
     parser.add_argument(
@@ -119,13 +190,25 @@ def main() -> None:
         default=None,
         help="Optional OHLCV or Gold CSV (default: latest local extract)",
     )
+    parser.add_argument(
+        "--sync-json",
+        type=Path,
+        default=None,
+        help="Optional pipeline_sync.json from Databricks (default: data/export/)",
+    )
+    parser.add_argument(
+        "--synced-at",
+        type=str,
+        default=None,
+        help="Optional ISO UTC override for Last sync (e.g. 2026-10-29T17:11:24Z)",
+    )
     args = parser.parse_args()
 
     src = args.csv if args.csv else _latest_local_csv()
     src = src.resolve()
     print(f"Reading {src}")
-    df = pd.read_csv(src)
-    gold = _compute_gold_from_ohlcv(df)
+    raw_df = pd.read_csv(src)
+    gold = _compute_gold_from_ohlcv(raw_df)
 
     export_dir = ROOT / "data" / "export"
     web_data = ROOT / "web" / "public" / "data"
@@ -137,8 +220,20 @@ def main() -> None:
 
     gold.to_csv(csv_path, index=False)
 
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    pipeline_synced_at, sync_source = _resolve_pipeline_synced_at(
+        src=src,
+        raw_df=raw_df,
+        sync_json=args.sync_json.resolve() if args.sync_json else None,
+        synced_at_cli=args.synced_at,
+    )
+    last_synced_at = pipeline_synced_at or generated_at
+
     payload = {
-        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at_utc": generated_at,
+        "pipeline_synced_at_utc": pipeline_synced_at,
+        "last_synced_at_utc": last_synced_at,
+        "last_synced_source": sync_source if pipeline_synced_at else "generated_at_utc",
         "source_file": str(src.as_posix()),
         "row_count": int(len(gold)),
         "tickers": sorted(gold["ticker"].unique().tolist()),
@@ -152,6 +247,7 @@ def main() -> None:
     print(f"Wrote {json_path}")
     print(f"Tickers: {', '.join(payload['tickers'])}")
     print(f"Range: {payload['date_min']} → {payload['date_max']}")
+    print(f"Last sync: {last_synced_at} (source={payload['last_synced_source']})")
 
 
 if __name__ == "__main__":

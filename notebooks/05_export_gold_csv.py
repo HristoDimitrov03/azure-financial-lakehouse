@@ -57,3 +57,35 @@ dbutils.fs.rm(f"{base_abfss}/export/_gold_tmp", True)
 
 print(f"Wrote {EXPORT_CSV}")
 display(export_df.orderBy(F.col("trade_date").desc()).limit(10))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Refresh pipeline sync stamp
+# MAGIC Prefer Gold's `_gold_built_at_utc` (when Medallion last wrote Gold).
+# MAGIC Fallback: now (export time).
+
+# COMMAND ----------
+
+import json
+from datetime import datetime, timezone
+
+SYNC_PATH = f"{base_abfss}/export/pipeline_sync.json"
+
+built = None
+if "_gold_built_at_utc" in gold.columns:
+    row = gold.agg(F.max("_gold_built_at_utc").alias("ts")).collect()[0]
+    if row["ts"] is not None:
+        built = row["ts"].strftime("%Y-%m-%dT%H:%M:%SZ")
+
+synced_at = built or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+pipeline_sync = {
+    "pipeline_synced_at_utc": synced_at,
+    "source": "databricks_05_export",
+    "gold_built_at_utc": built,
+    "export_csv": EXPORT_CSV,
+}
+dbutils.fs.mkdirs(f"{base_abfss}/export")
+dbutils.fs.put(SYNC_PATH, json.dumps(pipeline_sync, indent=2), overwrite=True)
+print(f"Wrote pipeline sync stamp → {SYNC_PATH}")
+print(json.dumps(pipeline_sync, indent=2))

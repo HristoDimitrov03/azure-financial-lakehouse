@@ -32,13 +32,17 @@ Writes:
 
 **Azure Gold path (after a Medallion run):**
 
-1. Databricks → import/run `notebooks/05_export_gold_csv.py`  
-2. PC:
+1. Re-import `notebooks/03_gold_metrics.py` (writes `export/pipeline_sync.json` when Gold finishes)  
+2. Databricks → import/run `notebooks/05_export_gold_csv.py` (CSV + refreshes sync stamp)  
+3. PC:
 
 ```powershell
 python scripts\download_gold_export.py
 python scripts\build_gold_export.py --csv data\export\gold_metrics.csv
 ```
+
+**Last sync** on the site uses `pipeline_synced_at_utc` from that sync file (Medallion end),
+not the time you ran the Python build script.
 
 ## S — Local preview
 

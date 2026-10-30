@@ -14,6 +14,11 @@ export type GoldRow = {
 
 export type GoldPayload = {
   generated_at_utc: string;
+  /** Medallion / extract completion time when available. */
+  pipeline_synced_at_utc?: string | null;
+  /** Value shown as Last sync (pipeline stamp, else generated_at). */
+  last_synced_at_utc?: string;
+  last_synced_source?: string;
   source_file: string;
   row_count: number;
   tickers: string[];

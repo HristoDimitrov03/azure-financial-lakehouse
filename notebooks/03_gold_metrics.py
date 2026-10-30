@@ -84,3 +84,28 @@ display(
     .select("trade_date", "ticker", "close", "ma_7d", "ma_30d", "daily_return_pct")
     .limit(15)
 )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Pipeline sync stamp (for the web dashboard)
+# MAGIC Written when Gold finishes — this is what **Last sync** should show
+# MAGIC (Medallion job end), not when someone rebuilds JSON on a laptop.
+
+# COMMAND ----------
+
+import json
+from datetime import datetime, timezone
+
+synced_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+pipeline_sync = {
+    "pipeline_synced_at_utc": synced_at,
+    "source": "databricks_03_gold",
+    "gold_delta": GOLD_DELTA,
+    "gold_table": GOLD_TABLE,
+}
+SYNC_PATH = f"{base_abfss}/export/pipeline_sync.json"
+dbutils.fs.mkdirs(f"{base_abfss}/export")
+dbutils.fs.put(SYNC_PATH, json.dumps(pipeline_sync, indent=2), overwrite=True)
+print(f"Wrote pipeline sync stamp → {SYNC_PATH}")
+print(json.dumps(pipeline_sync, indent=2))
