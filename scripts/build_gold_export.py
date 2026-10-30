@@ -4,11 +4,12 @@ Build Gold-style metrics JSON/CSV for the Next.js dashboard (Sprint 5).
 Default source: latest local Sprint 1 extract under data/raw/market_daily/.
 Optional: --csv path to a Gold CSV exported from Databricks (notebook 05).
 
-Last sync on the dashboard uses (in order):
-  1. data/export/pipeline_sync.json (written by Databricks notebook 03/05)
-  2. --synced-at CLI override
-  3. max extracted_at_utc from the source CSV
-  4. sibling _manifest.json extracted_at_utc
+Last sync on the dashboard = when market data was scraped (extracted_at_utc),
+in order:
+  1. --synced-at CLI override
+  2. max extracted_at_utc from the source CSV
+  3. sibling / downloaded extract _manifest.json
+  4. data/export/pipeline_sync.json → extracted_at_utc (then pipeline_synced_at_utc)
   5. generated_at_utc (JSON build time) as last resort
 
 Outputs (for Vercel static hosting):
@@ -138,11 +139,31 @@ def _resolve_pipeline_synced_at(
     sync_json: Path | None,
     synced_at_cli: str | None,
 ) -> tuple[str | None, str]:
-    """Return (iso_utc or None, source_label)."""
+    """Return scrape-time ISO UTC (extracted_at) when possible."""
     if synced_at_cli:
         normalized = _normalize_utc(synced_at_cli)
         if normalized:
             return normalized, "cli"
+
+    if "extracted_at_utc" in raw_df.columns:
+        series = pd.to_datetime(raw_df["extracted_at_utc"], utc=True, errors="coerce")
+        if series.notna().any():
+            stamp = series.max().strftime("%Y-%m-%dT%H:%M:%SZ")
+            return stamp, "csv:extracted_at_utc"
+
+    for manifest in (
+        src.parent / "_manifest.json",
+        ROOT / "data" / "export" / "extract_manifest.json",
+    ):
+        if not manifest.is_file():
+            continue
+        try:
+            payload = json.loads(manifest.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        normalized = _normalize_utc(str(payload.get("extracted_at_utc") or ""))
+        if normalized:
+            return normalized, f"manifest:{manifest.name}"
 
     candidates = []
     if sync_json is not None:
@@ -156,28 +177,13 @@ def _resolve_pipeline_synced_at(
             payload = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, json.JSONDecodeError):
             continue
-        stamp = payload.get("pipeline_synced_at_utc") or payload.get(
-            "gold_built_at_utc"
+        stamp = (
+            payload.get("extracted_at_utc")
+            or payload.get("pipeline_synced_at_utc")
         )
         normalized = _normalize_utc(str(stamp)) if stamp else None
         if normalized:
             return normalized, f"pipeline_sync:{path.name}"
-
-    if "extracted_at_utc" in raw_df.columns:
-        series = pd.to_datetime(raw_df["extracted_at_utc"], utc=True, errors="coerce")
-        if series.notna().any():
-            stamp = series.max().strftime("%Y-%m-%dT%H:%M:%SZ")
-            return stamp, "csv:extracted_at_utc"
-
-    manifest = src.parent / "_manifest.json"
-    if manifest.is_file():
-        try:
-            payload = json.loads(manifest.read_text(encoding="utf-8-sig"))
-        except (OSError, json.JSONDecodeError):
-            payload = {}
-        normalized = _normalize_utc(str(payload.get("extracted_at_utc") or ""))
-        if normalized:
-            return normalized, "manifest:extracted_at_utc"
 
     return None, "none"
 

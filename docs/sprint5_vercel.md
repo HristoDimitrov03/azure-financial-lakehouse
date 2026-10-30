@@ -41,8 +41,8 @@ python scripts\download_gold_export.py
 python scripts\build_gold_export.py --csv data\export\gold_metrics.csv
 ```
 
-**Last sync** on the site uses `pipeline_synced_at_utc` from that sync file (Medallion end),
-not the time you ran the Python build script.
+**Last sync** on the site is scrape time (`extracted_at_utc` from notebook 04 /
+the bronze extract manifest), not Gold build time or when you ran the Python script.
 
 ## S — Local preview
 

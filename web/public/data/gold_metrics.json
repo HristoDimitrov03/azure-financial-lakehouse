@@ -1,8 +1,8 @@
 {
-  "generated_at_utc": "2026-10-30T08:06:42Z",
-  "pipeline_synced_at_utc": "2026-10-30T08:05:16Z",
-  "last_synced_at_utc": "2026-10-30T08:05:16Z",
-  "last_synced_source": "pipeline_sync:pipeline_sync.json",
+  "generated_at_utc": "2026-10-30T08:13:42Z",
+  "pipeline_synced_at_utc": "2026-10-29T17:09:45Z",
+  "last_synced_at_utc": "2026-10-29T17:09:45Z",
+  "last_synced_source": "manifest:extract_manifest.json",
   "source_file": "C:/Users/hrist/Desktop/W/Cursor_Projects/azure-financial-lakehouse/data/export/gold_metrics.csv",
   "row_count": 2268,
   "tickers": [

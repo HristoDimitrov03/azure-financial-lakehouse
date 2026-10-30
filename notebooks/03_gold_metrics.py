@@ -32,6 +32,7 @@ gold = (
         "close",
         "adj_close",
         "volume",
+        "extracted_at_utc",
     )
     .withColumn("ma_7d", F.avg("close").over(w.rowsBetween(-6, 0)))
     .withColumn("ma_30d", F.avg("close").over(w.rowsBetween(-29, 0)))
@@ -89,17 +90,30 @@ display(
 
 # MAGIC %md
 # MAGIC ## Pipeline sync stamp (for the web dashboard)
-# MAGIC Written when Gold finishes — this is what **Last sync** should show
-# MAGIC (Medallion job end), not when someone rebuilds JSON on a laptop.
+# MAGIC **Last sync** = when yfinance data was scraped (`extracted_at_utc`), not Gold build time.
 
 # COMMAND ----------
 
 import json
 from datetime import datetime, timezone
 
-synced_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+extracted_row = silver.agg(F.max("extracted_at_utc").alias("ts")).collect()[0]
+extracted_at = None
+if extracted_row["ts"] is not None:
+    ts = extracted_row["ts"]
+    extracted_at = (
+        ts.strftime("%Y-%m-%dT%H:%M:%SZ")
+        if hasattr(ts, "strftime")
+        else str(ts).replace(" ", "T")
+    )
+    if extracted_at.endswith("+00:00"):
+        extracted_at = extracted_at[:-6] + "Z"
+
+gold_built = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 pipeline_sync = {
-    "pipeline_synced_at_utc": synced_at,
+    "extracted_at_utc": extracted_at,
+    "pipeline_synced_at_utc": extracted_at or gold_built,
+    "gold_built_at_utc": gold_built,
     "source": "databricks_03_gold",
     "gold_delta": GOLD_DELTA,
     "gold_table": GOLD_TABLE,

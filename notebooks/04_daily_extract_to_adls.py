@@ -194,3 +194,23 @@ dbutils.fs.put(target_manifest, json.dumps(manifest, indent=2), overwrite=True)
 print(f"Wrote {target_csv}")
 print(f"Wrote {target_manifest}")
 display(dbutils.fs.ls(target_dir))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Pipeline sync stamp — scrape time for the web dashboard
+
+# COMMAND ----------
+
+SYNC_PATH = f"{base_abfss}/export/pipeline_sync.json"
+pipeline_sync = {
+    "extracted_at_utc": extracted_at_utc,
+    "pipeline_synced_at_utc": extracted_at_utc,
+    "source": "databricks_notebook_04",
+    "extract_date": extract_date,
+    "output_csv": target_csv,
+}
+dbutils.fs.mkdirs(f"{base_abfss}/export")
+dbutils.fs.put(SYNC_PATH, json.dumps(pipeline_sync, indent=2), overwrite=True)
+print(f"Wrote pipeline sync stamp → {SYNC_PATH}")
+print(json.dumps(pipeline_sync, indent=2))

@@ -22,7 +22,7 @@ from pyspark.sql import functions as F
 EXPORT_CSV = f"{base_abfss}/export/gold_metrics.csv"
 
 gold = spark.read.format("delta").load(GOLD_DELTA)
-export_df = gold.select(
+cols = [
     "trade_date",
     "ticker",
     "open",
@@ -34,7 +34,11 @@ export_df = gold.select(
     "ma_7d",
     "ma_30d",
     "daily_return_pct",
-).orderBy("ticker", "trade_date")
+]
+if "extracted_at_utc" in gold.columns:
+    cols.append("extracted_at_utc")
+
+export_df = gold.select(*cols).orderBy("ticker", "trade_date")
 
 print(f"Exporting {export_df.count()} rows → {EXPORT_CSV}")
 
@@ -62,8 +66,7 @@ display(export_df.orderBy(F.col("trade_date").desc()).limit(10))
 
 # MAGIC %md
 # MAGIC ## Refresh pipeline sync stamp
-# MAGIC Prefer Gold's `_gold_built_at_utc` (when Medallion last wrote Gold).
-# MAGIC Fallback: now (export time).
+# MAGIC **Last sync** = scrape time (`extracted_at_utc`), not export/Gold build time.
 
 # COMMAND ----------
 
@@ -72,17 +75,36 @@ from datetime import datetime, timezone
 
 SYNC_PATH = f"{base_abfss}/export/pipeline_sync.json"
 
+
+def _fmt_ts(value):
+    if value is None:
+        return None
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+    text = str(value).replace(" ", "T")
+    if text.endswith("+00:00"):
+        text = text[:-6] + "Z"
+    return text
+
+
+extracted_at = None
+if "extracted_at_utc" in gold.columns:
+    row = gold.agg(F.max("extracted_at_utc").alias("ts")).collect()[0]
+    extracted_at = _fmt_ts(row["ts"])
+
 built = None
 if "_gold_built_at_utc" in gold.columns:
     row = gold.agg(F.max("_gold_built_at_utc").alias("ts")).collect()[0]
-    if row["ts"] is not None:
-        built = row["ts"].strftime("%Y-%m-%dT%H:%M:%SZ")
+    built = _fmt_ts(row["ts"])
 
-synced_at = built or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+synced_at = extracted_at or built or datetime.now(timezone.utc).strftime(
+    "%Y-%m-%dT%H:%M:%SZ"
+)
 pipeline_sync = {
+    "extracted_at_utc": extracted_at,
     "pipeline_synced_at_utc": synced_at,
-    "source": "databricks_05_export",
     "gold_built_at_utc": built,
+    "source": "databricks_05_export",
     "export_csv": EXPORT_CSV,
 }
 dbutils.fs.mkdirs(f"{base_abfss}/export")

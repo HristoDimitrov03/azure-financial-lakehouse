@@ -141,7 +141,7 @@ export function Dashboard({ data }: Props) {
           </p>
           <div
             className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-sm"
-            title="When the Medallion pipeline (or extract) last finished — not when this page was built"
+            title="When market data was last scraped (yfinance extract time)"
           >
             <span
               className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"
