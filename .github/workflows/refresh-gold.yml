@@ -1,0 +1,44 @@
+name: Refresh Gold metrics
+
+on:
+  schedule:
+    # Weekdays after US cash close (~17:15 ET ≈ 21:15 UTC; EST/EDT shifts ignored)
+    - cron: "15 21 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Extract market data
+        run: python scripts/run_extract.py
+
+      - name: Build Gold JSON for the dashboard
+        run: python scripts/build_gold_export.py
+
+      - name: Commit and push if snapshot changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/public/data/gold_metrics.json
+          if git diff --staged --quiet; then
+            echo "No Gold snapshot changes."
+          else
+            git commit -m "Refresh Gold metrics snapshot"
+            git push
+          fi

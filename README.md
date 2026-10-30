@@ -61,6 +61,7 @@ yfinance
 | **Delta Lake** | Bronze / Silver / Gold tables | ACID tables on the lake, schema evolution, safe layer rebuilds |
 | **Azure Data Factory** | Schedule + trigger the Databricks Job | Orchestration stays separate from Spark — ADF starts the Job; notebooks do the work |
 | **Next.js + Recharts** | Dashboard over Gold | Lightweight UI over curated JSON without opening the lake to the browser |
+| **Docker** | Containerized extract + Gold export | Same pipeline steps in a reproducible image (`docker compose run pipeline`) |
 
 ---
 
@@ -81,12 +82,15 @@ Watchlist is configured in `config/tickers.yaml` (AAPL, MSFT, GOOGL, AMZN, META,
 ## Repository map
 
 ```text
-web/           Next.js dashboard
-notebooks/     Databricks Medallion + daily extract + Gold export
-src/           Python extract / ADLS load helpers
-scripts/       Local extract, upload, Gold JSON build / download
-adf/           Data Factory notes
-config/        Tickers and non-secret settings
+web/                 Next.js dashboard
+notebooks/           Databricks Medallion + daily extract + Gold export
+src/                 Python extract / ADLS load helpers
+scripts/             Local extract, upload, Gold JSON build / download
+adf/                 Data Factory notes
+config/              Tickers and non-secret settings
+Dockerfile           Extract + Gold export image
+docker-compose.yml   Bind-mount pipeline runner
+.github/workflows/   Scheduled Gold snapshot refresh
 ```
 
 ---
