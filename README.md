@@ -62,8 +62,6 @@ yfinance
 | **Azure Data Factory** | Schedule + trigger the Databricks Job | Orchestration stays separate from Spark — ADF starts the Job; notebooks do the work |
 | **Next.js + Recharts** | Dashboard over Gold | Lightweight UI over curated JSON without opening the lake to the browser |
 
-More detail on architecture and Azure setup: [`docs/`](docs/).
-
 ---
 
 ## Gold metrics the dashboard cares about
@@ -88,7 +86,6 @@ notebooks/     Databricks Medallion + daily extract + Gold export
 src/           Python extract / ADLS load helpers
 scripts/       Local extract, upload, Gold JSON build / download
 adf/           Data Factory notes
-docs/          Architecture & Azure setup guides
 config/        Tickers and non-secret settings
 ```
 

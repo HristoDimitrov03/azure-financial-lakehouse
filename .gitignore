@@ -62,6 +62,9 @@ web/out/
 Thumbs.db
 desktop.ini
 
+# Local build notes (for working with Cursor — not part of the public showcase)
+docs/**/*.md
+
 # Docker
 *.log
 
