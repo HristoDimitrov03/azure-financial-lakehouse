@@ -28,11 +28,15 @@ yfinance (Python)
 
 ## Demo
 
-| Asset | Status |
-|--------|--------|
+| Asset | Link |
+|--------|------|
 | GitHub | https://github.com/HristoDimitrov03/azure-financial-lakehouse |
-| Loom — live Azure pipeline | _TODO: add link after Sprint 5 recording_ |
+| Pipeline walkthrough (ADF → Databricks → dashboard) | [Watch video](docs/demo/azure-pipeline-demo.mp4) |
 | Live Vercel dashboard (Gold metrics) | https://azure-financial-lakehouse.vercel.app |
+
+**Pipeline demo** (Azure Data Factory → Databricks Medallion → Northline Markets):
+
+https://github.com/HristoDimitrov03/azure-financial-lakehouse/blob/master/docs/demo/azure-pipeline-demo.mp4
 
 ---
 
@@ -148,7 +152,7 @@ Notebooks: `notebooks/00`–`03` (Bronze → Silver → Gold). Prefer **Serverle
 | 2 | Azure Data Lake Storage Gen2 (**redo on Free Trial**) |
 | 3 | Databricks Medallion (after Sprint 2) |
 | 4 | Azure Data Factory orchestration (**done** — extract→Medallion + schedule) |
-| 5 | Next.js Gold dashboard on Vercel + Loom (**in progress**) |
+| 5 | Next.js Gold dashboard on Vercel + demo video (**done**) |
 | 6 | Portfolio Pivot: export, Docker, free host, README polish |
 
 ---
