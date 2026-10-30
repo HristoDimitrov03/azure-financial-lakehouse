@@ -32,7 +32,7 @@ yfinance (Python)
 |--------|--------|
 | GitHub | https://github.com/HristoDimitrov03/azure-financial-lakehouse |
 | Loom — live Azure pipeline | _TODO: add link after Sprint 5 recording_ |
-| Live Vercel dashboard (Gold metrics) | _TODO: add production URL after first deploy_ |
+| Live Vercel dashboard (Gold metrics) | https://azure-financial-lakehouse.vercel.app |
 
 ---
 
