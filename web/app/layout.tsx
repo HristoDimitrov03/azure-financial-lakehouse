@@ -20,9 +20,9 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lakehouse Markets · Gold metrics",
+  title: "Northline Markets",
   description:
-    "Next.js dashboard over Azure Financial Lakehouse Gold (moving averages).",
+    "Track equities and benchmarks with daily prices, moving averages, and relative performance.",
 };
 
 export default function RootLayout({
@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <body
         className={`${display.variable} ${sans.variable} ${mono.variable} antialiased`}
       >
