@@ -1,0 +1,19 @@
+# -----------------------------------------------------------------------------
+# Local runtime settings (safe to commit — no secrets).
+# Override paths here if you customize the dry-run layout.
+# -----------------------------------------------------------------------------
+
+paths:
+  raw_local: "data/raw"
+  processed_local: "data/processed"
+  export_local: "data/export"
+
+adls:
+  bronze_prefix: "bronze/market_daily"
+  silver_prefix: "silver/market_daily"
+  gold_prefix: "gold/market_daily"
+
+medallion:
+  moving_average_windows:
+    - 7
+    - 30

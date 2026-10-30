@@ -1,0 +1,21 @@
+# Keep the Docker image small and free of secrets
+.git
+.gitignore
+.env
+.env.*
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.idea
+.vscode
+docs
+adf
+notebooks
+tests
+data/raw
+data/processed
+*.md
+!README.md

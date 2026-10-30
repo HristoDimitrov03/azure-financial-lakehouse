@@ -1,0 +1,22 @@
+# -----------------------------------------------------------------------------
+# Stock / ETF tickers to extract daily.
+# Edit freely — no secrets here; safe to commit.
+# Sprint 1 will read this file in the extract script.
+# -----------------------------------------------------------------------------
+
+tickers:
+  - AAPL    # Apple
+  - MSFT    # Microsoft
+  - GOOGL   # Alphabet
+  - AMZN    # Amazon
+  - META    # Meta
+  - NVDA    # NVIDIA
+  - JPM     # JPMorgan Chase
+  - V       # Visa
+  - SPY     # S&P 500 ETF (market benchmark)
+
+# How far back to pull on a full (non-incremental) run
+history:
+  period: "1y"          # yfinance period string, e.g. 6mo, 1y, 2y
+  # interval is daily for this project (batch EOD style)
+  interval: "1d"

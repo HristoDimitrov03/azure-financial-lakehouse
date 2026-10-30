@@ -1,0 +1,72 @@
+# -----------------------------------------------------------------------------
+# Git ignore rules — keep secrets and local junk out of GitHub
+# -----------------------------------------------------------------------------
+
+# Environment / secrets (NEVER commit real credentials)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+credentials/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Jupyter / Databricks local artifacts
+.ipynb_checkpoints/
+*.dbc
+
+# Local data (large or regenerated — keep structure via .gitkeep)
+data/raw/**
+!data/raw/.gitkeep
+data/processed/**
+!data/processed/.gitkeep
+data/export/**
+!data/export/.gitkeep
+*.csv
+*.parquet
+*.sqlite
+*.db
+!config/**
+# Commit the Vercel dashboard snapshot (regenerate with build_gold_export.py)
+!web/public/data/gold_metrics.json
+
+# Next.js
+web/node_modules/
+web/.next/
+web/out/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+*.log
+
+# Azure / Terraform state (if added later)
+.terraform/
+*.tfstate
+*.tfstate.*
+.azure/

@@ -1,0 +1,20 @@
+# -----------------------------------------------------------------------------
+# Non-secret runtime settings. Copy to settings.yaml locally if you customize.
+# Paths below match the local dry-run layout used before Azure upload.
+# -----------------------------------------------------------------------------
+
+paths:
+  raw_local: "data/raw"
+  processed_local: "data/processed"
+  export_local: "data/export"
+
+adls:
+  # Filled conceptually in Sprint 2 — real account names live in .env
+  bronze_prefix: "bronze/market_daily"
+  silver_prefix: "silver/market_daily"
+  gold_prefix: "gold/market_daily"
+
+medallion:
+  moving_average_windows:
+    - 7
+    - 30
