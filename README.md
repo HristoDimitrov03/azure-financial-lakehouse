@@ -4,7 +4,8 @@ A cloud **batch data platform** for equities: market data is scraped daily, land
 data lake, refined through a Medallion pipeline, and surfaced as a public metrics
 dashboard (**Northline Markets**).
 
-Built to demonstrate end-to-end data engineering on Azure — not a tutorial clone of every sprint step.
+I built this to run a full Azure lakehouse path end to end — ingest, transform, schedule,
+and read the results in a UI I actually use.
 
 ---
 
@@ -29,8 +30,8 @@ https://github.com/user-attachments/assets/7b5db1b7-203f-497d-8e01-989684b592c6
    - **Bronze** — faithful raw landing  
    - **Silver** — typed, deduplicated, trustworthy  
    - **Gold** — dashboard metrics (7d / 30d moving averages, daily returns)
-4. **Orchestrate** — **Azure Data Factory** runs the Databricks Job on a schedule so the lake refreshes without a laptop.
-5. **Serve** — Export Gold to JSON and host **Next.js** on **Vercel**: prices, volume, MA trends, SPY-relative performance, leaderboard, recent sessions. **Last sync** on the UI is the real scrape timestamp.
+4. **Orchestrate** — **Azure Data Factory** runs the Databricks Job on a schedule so the lake refreshes without keeping a machine on.
+5. **Serve** — Export Gold to JSON and host a **Next.js** dashboard: prices, volume, MA trends, SPY-relative performance, leaderboard, recent sessions. **Last sync** is the real scrape timestamp.
 
 ---
 
@@ -39,13 +40,13 @@ https://github.com/user-attachments/assets/7b5db1b7-203f-497d-8e01-989684b592c6
 ```text
 yfinance
    → ADLS Gen2 (raw / bronze landing)
-      → Databricks: Bronze → Silver → Gold (Serverless + Unity Catalog)
+      → Databricks: Bronze → Silver → Gold
          → Azure Data Factory (daily Job)
             → Gold export (CSV + pipeline sync stamp)
-               → Next.js dashboard on Vercel
+               → Next.js dashboard
 ```
 
-**Why batch (daily)?** End-of-day equity analytics need a reliable snapshot, not tick streaming. That matches common junior DE/DA workloads and keeps cloud cost predictable on Free Trial.
+**Why batch (daily)?** End-of-day equity analytics need a reliable snapshot, not tick streaming. A once-per-day job is enough for this use case and keeps Azure spend under control.
 
 ---
 
@@ -53,18 +54,15 @@ yfinance
 
 | Tool | Role in this project | Why it was chosen |
 |------|----------------------|-------------------|
-| **Python** | Extract scripts, ADLS upload, Gold → JSON export | Standard DE glue language; easy local dry-runs and CI-friendly scripts |
-| **yfinance** | Market data source | Free, practical EOD history for a portfolio demo without paid market-data licenses |
-| **Azure Data Lake Storage Gen2** | Durable raw + Delta landing zones | Industry-standard Azure lake storage; hierarchical namespace fits `extract_date=…` partitions |
-| **Databricks + PySpark** | Medallion transforms at scale | Real lakehouse compute; Serverless + Unity Catalog show modern Azure Databricks practice |
-| **Delta Lake** | Bronze / Silver / Gold tables | ACID tables on the lake, schema evolution, overwrite-safe layer rebuilds |
-| **Azure Data Factory** | Schedule + trigger the Databricks Job | Separates orchestration from compute — ADF starts work; Spark does the transforms |
-| **Unity Catalog / Access Connector** | Secure lake access from Databricks | Avoids brittle secret-based mounts; aligns with current Databricks security model |
-| **Next.js + Recharts** | Public “product” UI over Gold | Fast, static-friendly frontend that reads curated JSON without exposing the lake |
-| **Vercel** | Host the dashboard | Zero-ops public URL for recruiters; Root Directory `web/` keeps the monorepo clean |
-| **GitHub** | Source of truth + demo video | Portfolio entry point; video proves the live Azure path |
+| **Python** | Extract scripts, ADLS upload, Gold → JSON export | Natural glue for ingestion and exports; easy to run locally when debugging |
+| **yfinance** | Market data source | Free EOD history without a paid market-data feed |
+| **Azure Data Lake Storage Gen2** | Durable raw + Delta landing zones | Fits hierarchical lake paths like `extract_date=…` and pairs cleanly with Databricks |
+| **Databricks + PySpark** | Medallion transforms | Lakehouse compute where Bronze → Silver → Gold actually runs |
+| **Delta Lake** | Bronze / Silver / Gold tables | ACID tables on the lake, schema evolution, safe layer rebuilds |
+| **Azure Data Factory** | Schedule + trigger the Databricks Job | Orchestration stays separate from Spark — ADF starts the Job; notebooks do the work |
+| **Next.js + Recharts** | Dashboard over Gold | Lightweight UI over curated JSON without opening the lake to the browser |
 
-Setup runbooks (if you want to reproduce the cloud path) live under [`docs/`](docs/) — the README stays focused on **what** and **why**.
+More detail on architecture and Azure setup: [`docs/`](docs/).
 
 ---
 
@@ -76,16 +74,16 @@ Setup runbooks (if you want to reproduce the cloud path) live under [`docs/`](do
 | MA 7d / MA 30d | Short- vs medium-term trend (smoothed closes) |
 | Daily return % | Session-over-session move |
 | vs SPY (indexed) | Stock performance relative to the S&P 500 ETF proxy |
-| Last sync | When the extract actually scraped (`extracted_at_utc`), not “when someone rebuilt a JSON file” |
+| Last sync | When the extract actually scraped (`extracted_at_utc`), not when a JSON file was rebuilt on a laptop |
 
 Watchlist is configured in `config/tickers.yaml` (AAPL, MSFT, GOOGL, AMZN, META, NVDA, JPM, V, SPY).
 
 ---
 
-## Repository map (orientation)
+## Repository map
 
 ```text
-web/           Next.js dashboard (Vercel)
+web/           Next.js dashboard
 notebooks/     Databricks Medallion + daily extract + Gold export
 src/           Python extract / ADLS load helpers
 scripts/       Local extract, upload, Gold JSON build / download
@@ -96,6 +94,7 @@ config/        Tickers and non-secret settings
 
 ---
 
-## License
+## Author
 
-MIT
+**Hristo Dimitrov**  
+[LinkedIn](https://www.linkedin.com/in/hristo-dimitrov-0681a8246) · [GitHub](https://github.com/HristoDimitrov03)
