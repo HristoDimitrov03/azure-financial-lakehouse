@@ -1,167 +1,101 @@
 # Azure Financial Market Data Lakehouse
 
-> Portfolio flagship: Medallion Architecture on Azure → free forever Streamlit demo.
+A cloud **batch data platform** for equities: market data is scraped daily, landed in a
+data lake, refined through a Medallion pipeline, and surfaced as a public metrics
+dashboard (**Northline Markets**).
 
-A daily **batch** pipeline that extracts stock market data, stores it in ADLS Gen2,
-cleans and enriches it in Databricks (Bronze → Silver → Gold), orchestrates with
-Azure Data Factory, and serves insights via Streamlit.
-
-**Portfolio Pivot:** after proving the live cloud path (Loom demo), Gold data is
-exported locally so the Dockerized app can host for free with zero Azure cost.
+Built to demonstrate end-to-end data engineering on Azure — not a tutorial clone of every sprint step.
 
 ---
 
-## Architecture (high level)
+## See it live
 
-```text
-yfinance (Python)
-    → ADLS Gen2 (raw CSV)
-        → Databricks Bronze → Silver → Gold
-            → Azure Data Factory (daily schedule)
-                → Next.js on Vercel (Gold metrics JSON)
-                    → [Pivot] refresh JSON / Actions; delete Azure
-```
+| | |
+|--|--|
+| **Dashboard** | https://azure-financial-lakehouse.vercel.app |
+| **Repository** | https://github.com/HristoDimitrov03/azure-financial-lakehouse |
 
-*(Replace this section with a diagram image in Sprint 6.)*
-
----
-
-## Demo
-
-| Asset | Link |
-|--------|------|
-| GitHub | https://github.com/HristoDimitrov03/azure-financial-lakehouse |
-| Live Vercel dashboard (Gold metrics) | https://azure-financial-lakehouse.vercel.app |
-
-**Pipeline walkthrough** — ADF → Databricks Medallion → Northline Markets dashboard:
+**How the platform runs** — Azure Data Factory triggers Databricks (extract → Bronze → Silver → Gold), then curated metrics appear on the site:
 
 https://github.com/user-attachments/assets/7b5db1b7-203f-497d-8e01-989684b592c6
 
 ---
 
-## Project structure
+## What it does
+
+1. **Ingest** — Pull daily OHLCV for a watchlist of large-cap stocks plus **SPY** (S&P 500 ETF benchmark) via `yfinance`.
+2. **Land** — Store raw extracts in **ADLS Gen2**, partitioned by extract date, with a scrape-time manifest (`extracted_at_utc`).
+3. **Refine (Medallion)** — Databricks / PySpark:
+   - **Bronze** — faithful raw landing  
+   - **Silver** — typed, deduplicated, trustworthy  
+   - **Gold** — dashboard metrics (7d / 30d moving averages, daily returns)
+4. **Orchestrate** — **Azure Data Factory** runs the Databricks Job on a schedule so the lake refreshes without a laptop.
+5. **Serve** — Export Gold to JSON and host **Next.js** on **Vercel**: prices, volume, MA trends, SPY-relative performance, leaderboard, recent sessions. **Last sync** on the UI is the real scrape timestamp.
+
+---
+
+## Data flow
 
 ```text
-azure-financial-lakehouse/
-├── web/                 # Next.js Gold dashboard (Vercel root)
-├── app/                 # Optional Streamlit scaffold
-├── config/              # Tickers & settings (no secrets)
-├── src/                 # Python extract / load / utils
-├── notebooks/           # Databricks PySpark (incl. 04 extract, 05 Gold CSV export)
-├── adf/                 # Data Factory notes / export stubs
-├── data/                # Local dry-run + Gold export (gitignored content)
-├── scripts/             # Extract, upload, Gold export helpers
-├── docs/                # Setup guides & architecture notes
-├── tests/               # Unit tests
-├── Dockerfile           # Optional container experiments
-├── requirements.txt
-└── .env.example         # Copy → .env (never commit secrets)
+yfinance
+   → ADLS Gen2 (raw / bronze landing)
+      → Databricks: Bronze → Silver → Gold (Serverless + Unity Catalog)
+         → Azure Data Factory (daily Job)
+            → Gold export (CSV + pipeline sync stamp)
+               → Next.js dashboard on Vercel
 ```
+
+**Why batch (daily)?** End-of-day equity analytics need a reliable snapshot, not tick streaming. That matches common junior DE/DA workloads and keeps cloud cost predictable on Free Trial.
 
 ---
 
-## Quick start (local — Sprint 0+)
+## Toolkit — and why each piece
 
-```bash
-# 1. Create a virtual environment
-python -m venv .venv
+| Tool | Role in this project | Why it was chosen |
+|------|----------------------|-------------------|
+| **Python** | Extract scripts, ADLS upload, Gold → JSON export | Standard DE glue language; easy local dry-runs and CI-friendly scripts |
+| **yfinance** | Market data source | Free, practical EOD history for a portfolio demo without paid market-data licenses |
+| **Azure Data Lake Storage Gen2** | Durable raw + Delta landing zones | Industry-standard Azure lake storage; hierarchical namespace fits `extract_date=…` partitions |
+| **Databricks + PySpark** | Medallion transforms at scale | Real lakehouse compute; Serverless + Unity Catalog show modern Azure Databricks practice |
+| **Delta Lake** | Bronze / Silver / Gold tables | ACID tables on the lake, schema evolution, overwrite-safe layer rebuilds |
+| **Azure Data Factory** | Schedule + trigger the Databricks Job | Separates orchestration from compute — ADF starts work; Spark does the transforms |
+| **Unity Catalog / Access Connector** | Secure lake access from Databricks | Avoids brittle secret-based mounts; aligns with current Databricks security model |
+| **Next.js + Recharts** | Public “product” UI over Gold | Fast, static-friendly frontend that reads curated JSON without exposing the lake |
+| **Vercel** | Host the dashboard | Zero-ops public URL for recruiters; Root Directory `web/` keeps the monorepo clean |
+| **GitHub** | Source of truth + demo video | Portfolio entry point; video proves the live Azure path |
 
-# 2. Activate it
-# Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# macOS / Linux:
-# source .venv/bin/activate
+Setup runbooks (if you want to reproduce the cloud path) live under [`docs/`](docs/) — the README stays focused on **what** and **why**.
 
-# 3. Install dependencies
-python -m pip install -r requirements.txt
+---
 
-# 4. Copy env template (fill later when we reach Azure)
-copy .env.example .env
-```
+## Gold metrics the dashboard cares about
 
-### Sprint 5 — Next.js dashboard (Vercel)
+| Metric | Meaning |
+|--------|---------|
+| Close / volume | Latest session price and activity |
+| MA 7d / MA 30d | Short- vs medium-term trend (smoothed closes) |
+| Daily return % | Session-over-session move |
+| vs SPY (indexed) | Stock performance relative to the S&P 500 ETF proxy |
+| Last sync | When the extract actually scraped (`extracted_at_utc`), not “when someone rebuilt a JSON file” |
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-python scripts\build_gold_export.py
-cd web
-npm install
-npm run dev
-```
+Watchlist is configured in `config/tickers.yaml` (AAPL, MSFT, GOOGL, AMZN, META, NVDA, JPM, V, SPY).
 
-Deploy: Vercel project with **Root Directory = `web`**.  
-Full steps: [`docs/sprint5_vercel.md`](docs/sprint5_vercel.md).
+---
 
-### Sprint 1 — local extract (yfinance)
-
-```bash
-# Activate venv, then:
-python scripts/run_extract.py
-
-# Optional overrides:
-python scripts/run_extract.py --period 6mo
-python scripts/run_extract.py --tickers AAPL MSFT SPY
-```
-
-Output lands at:
+## Repository map (orientation)
 
 ```text
-data/raw/market_daily/extract_date=YYYY-MM-DD/market_ohlcv.csv
-data/raw/market_daily/extract_date=YYYY-MM-DD/_manifest.json
+web/           Next.js dashboard (Vercel)
+notebooks/     Databricks Medallion + daily extract + Gold export
+src/           Python extract / ADLS load helpers
+scripts/       Local extract, upload, Gold JSON build / download
+adf/           Data Factory notes
+docs/          Architecture & Azure setup guides
+config/        Tickers and non-secret settings
 ```
-
-Raw schema columns: `trade_date`, `ticker`, `open`, `high`, `low`, `close`,
-`adj_close`, `volume`, `source`, `extracted_at_utc` (see `src/extract/schema.py`).
-
-Edit symbols in `config/tickers.yaml`. No Azure required for this sprint.
-
-### Sprint 2 — ADLS Gen2 upload (Azure Free Trial)
-
-1. Follow [`docs/azure_setup.md`](docs/azure_setup.md) Sprint 2 on your **Free Trial** subscription  
-2. Put the **new** `AZURE_STORAGE_CONNECTION_STRING` in `.env`  
-3. Upload:
-
-```bash
-python scripts/run_extract.py
-python scripts/run_upload.py
-```
-
-Restart checklist: [`docs/restart_free_trial.md`](docs/restart_free_trial.md)
-
-### Sprint 3 — Databricks Medallion
-
-Portal steps: [`docs/azure_setup.md`](docs/azure_setup.md) Sprint 3.  
-Plain English: [`docs/sprint3_databricks.md`](docs/sprint3_databricks.md).
-
-### Sprint 4 — Azure Data Factory
-
-Portal steps: [`docs/azure_setup.md`](docs/azure_setup.md) Sprint 4.  
-Plain English: [`docs/sprint4_adf.md`](docs/sprint4_adf.md).  
-ADF notes: [`adf/README.md`](adf/README.md).
-Notebooks: `notebooks/00`–`03` (Bronze → Silver → Gold). Prefer **Serverless** compute.
-
----
-
-## Sprint roadmap
-
-| Sprint | Focus |
-|--------|--------|
-| 0 | Repo foundation |
-| 1 | Extraction with `yfinance` |
-| 2 | Azure Data Lake Storage Gen2 (**redo on Free Trial**) |
-| 3 | Databricks Medallion (after Sprint 2) |
-| 4 | Azure Data Factory orchestration (**done** — extract→Medallion + schedule) |
-| 5 | Next.js Gold dashboard on Vercel + demo video (**done**) |
-| 6 | Portfolio Pivot: export, Docker, free host, README polish |
-
----
-
-## Tech stack
-
-Python · yfinance · ADLS Gen2 · Databricks / PySpark · Azure Data Factory · Next.js · Vercel · Docker
 
 ---
 
 ## License
 
-MIT (or your preferred license — finalize before public GitHub push).
+MIT
